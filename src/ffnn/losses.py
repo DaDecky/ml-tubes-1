@@ -51,3 +51,16 @@ def apply_loss_derivative(name: LossName, y_true: NDArray[np.float64], y_pred: N
     if name == "categorical_crossentropy":
         return categorical_crossentropy_derivative(y_true, y_pred)
     raise ValueError(f"Unsupported loss function: {name}")
+
+# regularisasi dipakai di hitung loss, turunannya dipakai di hitung gradien
+def l1_regularization(weights: NDArray[np.float64], lambda_: float) -> float:
+    return lambda_ * np.sum(np.abs(weights))
+
+def l1_regularization_derivative(weights: NDArray[np.float64], lambda_: float) -> NDArray[np.float64]:
+    return lambda_ * np.sign(weights)
+
+def l2_regularization(weights: NDArray[np.float64], lambda_: float) -> float:
+    return lambda_ * np.sum(weights ** 2)
+
+def l2_regularization_derivative(weights: NDArray[np.float64], lambda_: float) -> NDArray[np.float64]:
+    return 2 * lambda_ * weights
