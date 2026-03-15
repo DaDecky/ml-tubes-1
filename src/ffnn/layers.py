@@ -15,6 +15,7 @@ class Dense:
         self,
         n_neuron: int,
         activation: ActivationName,
+        kernel_regularizer = None,
         input_dim: Optional[int] = None,
         weight_initializer: WeightInitializer = "random_normal",
         seed: Optional[int] = None,
@@ -32,6 +33,7 @@ class Dense:
         self._mean: float = mean
         self._variance: float = variance
         self._rng = np.random.default_rng(seed)
+        self._kernel_regularizer = kernel_regularizer
 
         self._is_first_layer = input_dim is not None
         self._weights: Optional[NDArray[np.float64]] = None
@@ -82,7 +84,6 @@ class Dense:
     def _compute_output_error_terms(self, loss, target, predicted, batch_size):
         loss_derivative = apply_loss_derivative(loss, target, predicted)
         activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
-
         error_terms = loss_derivative * activation_derivative
 
         return error_terms
@@ -106,6 +107,9 @@ class Dense:
             error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights, batch_size)
 
         self.dW = (self._last_input.T @ error_terms) / batch_size
+        if self._kernel_regularizer is not None:
+            self.dW += self._kernel_regularizer.gradient(self._weights)
+
         self.db = np.sum(error_terms, axis=0, keepdims=True) / batch_size
         
         self._weights -= lr*self.dW
@@ -127,6 +131,10 @@ class Dense:
         if self._bias is None:
             raise ValueError("Layer bias is not initialized.")
         return self._bias
+    
+    @property
+    def kernel_regularizer(self):
+        return self._kernel_regularizer
 
     def _initialize_weights(self, input_dim: int) -> NDArray[np.float64]:
         shape = (input_dim, self._n_neuron)

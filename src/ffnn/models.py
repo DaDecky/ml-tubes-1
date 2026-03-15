@@ -97,20 +97,36 @@ class Sequential:
                 epoch_training_loss += batch_loss * current_batch_size
                 
                 self.backward(y_batch, predictions, current_batch_size)
+            
+
+            data_loss  = epoch_training_loss / x_size
+
+            reg_loss = 0
+            for layer in self._layers:
+                if layer.kernel_regularizer is not None:
+                    reg_loss += layer.kernel_regularizer(layer.weights)
+            
+            total_loss = data_loss + reg_loss
                 
-            average_training_loss = epoch_training_loss / x_size
-            history["training_loss"].append(average_training_loss)
+            history["training_loss"].append(total_loss)
             
             if x_val is not None and y_val is not None:
                 val_predictions = self.forward(x_val)
                 val_loss = apply_loss_function(self._loss, y_val, val_predictions)
+                
+                reg_loss = 0
+                for layer in self._layers:
+                    if layer.kernel_regularizer is not None:
+                        reg_loss += layer.kernel_regularizer(layer.weights)
+
+                val_loss += reg_loss
                 history["validation_loss"].append(val_loss)
                 
                 if verbose == 1:
-                    print(f"epoch {epoch} loss {average_training_loss} val_loss {val_loss}")
+                    print(f"epoch {epoch} loss {total_loss} val_loss {val_loss}")
             else:
                 if verbose == 1:
-                    print(f"epoch {epoch} loss {average_training_loss}")
+                    print(f"epoch {epoch} loss {total_loss}")
                     
         return history
 
