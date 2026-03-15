@@ -31,7 +31,7 @@ def categorical_crossentropy(y_true: NDArray[np.float64], y_pred: NDArray[np.flo
 
 def categorical_crossentropy_derivative(y_true: NDArray[np.float64], y_pred: NDArray[np.float64]) -> NDArray[np.float64]:
     y_pred_clip = np.clip(y_pred, epsilon, 1 - epsilon)
-    n = y_true.shape[0]
+    n = len(y_true)
     return - (1 / n) * (y_true / y_pred_clip)
 
 def apply_loss_function(name: LossName, y_true: NDArray[np.float64], y_pred: NDArray[np.float64]) -> float:
