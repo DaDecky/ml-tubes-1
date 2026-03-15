@@ -39,6 +39,8 @@ class Dense:
         self._last_input: Optional[NDArray[np.float64]] = None
         self._last_linear_output: Optional[NDArray[np.float64]] = None
         self._last_output: Optional[NDArray[np.float64]] = None
+        self.dW: Optional[NDArray[np.float64]] = None
+        self.db: Optional[NDArray[np.float64]] = None
 
         self._error_terms: NDArray[np.float64] = None
 
@@ -95,7 +97,7 @@ class Dense:
         return error_terms
         
 
-    def backward(self, lr: int, loss, target: Optional[NDArray[np.float64]]=None, predictions=[], prev_layer_weights: Optional[NDArray[np.float64]] = [], prev_error_terms: Optional[NDArray[np.float64]] = [], batch_size: int=1) -> NDArray[np.float64]:
+    def backward(self, lr: float, loss, target: Optional[NDArray[np.float64]]=None, predictions=[], prev_layer_weights: Optional[NDArray[np.float64]] = [], prev_error_terms: Optional[NDArray[np.float64]] = [], batch_size: int=1) -> NDArray[np.float64]:
         
         if target is not None: # output layer
             error_terms = self._compute_output_error_terms(loss, target, predictions, batch_size)
@@ -103,12 +105,11 @@ class Dense:
         else: # hidden layer
             error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights, batch_size)
 
-        delta_weights = self._last_input.T @ error_terms
-        self._weights -= lr*delta_weights
-
-        delta_bias =  np.sum(error_terms, axis=0, keepdims=True)
-        self._bias -= lr*delta_bias
-                
+        self.dW = (self._last_input.T @ error_terms) / batch_size
+        self.db = np.sum(error_terms, axis=0, keepdims=True) / batch_size
+        
+        self._weights -= lr*self.dW
+        self._bias -= lr*self.db
 
         return error_terms
 
