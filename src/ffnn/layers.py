@@ -80,24 +80,9 @@ class Dense:
     def _compute_output_error_terms(self, loss, target, predicted, batch_size):
         loss_derivative = apply_loss_derivative(loss, target, predicted)
         activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
-        
-        
-        error_terms:NDArray[np.float64] = [0 for i in range(len(loss_derivative))]
-        for i in range(batch_size):
-            error_terms[i] = -loss_derivative[i] * activation_derivative[i]
 
-        error_terms = np.sum(error_terms, axis=0)
+        error_terms = loss_derivative * activation_derivative
 
-
-
-        # print("Loss Derivative")
-        # print(loss_derivative.shape)
-
-        # print("Activation Derivative")
-        # print(activation_derivative)
-
-        # print("error_terms")
-        # print(error_terms)
         return error_terms
 
     def _compute_hidden_error_terms(self, prev_error_terms, prev_layer_weights, batch_size):
@@ -105,26 +90,7 @@ class Dense:
         prev_loss_derivative = prev_error_terms
         activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
 
-            
-        # print("prev_loss_derivative")
-        # print(prev_loss_derivative.shape)
-
-        # print("prev_layer_weights")
-        # print(prev_layer_weights.shape)
-
-        error_terms = (prev_layer_weights @ prev_loss_derivative.T).flatten()
-
-        # print("error_terms")
-        # print(error_terms)
-
-        # print("Activation Derivative")
-        # print(activation_derivative)
-        
-
-        # print("error_terms")
-        # print(error_terms)
-        
-        
+        error_terms = (prev_loss_derivative @ prev_layer_weights.T) * activation_derivative
 
         return error_terms
         
@@ -137,25 +103,11 @@ class Dense:
         else: # hidden layer
             error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights, batch_size)
 
-        # print("Error Terms")
-        # print(error_terms)
-
-        # print("Weights")
-        # print(self._weights)
-
-        # print("_bias")
-        # print(self._bias)
-
-        # print("Last Input")
-        # print(self._last_input)
-
-        error_terms = np.tile(error_terms, (batch_size,1))
-
         delta_weights = self._last_input.T @ error_terms
-        self._weights += -lr*delta_weights
+        self._weights -= lr*delta_weights
 
-        delta_bias =  [[1 for _ in range(batch_size)]] @ error_terms
-        self._bias += -lr*delta_bias
+        delta_bias =  np.sum(error_terms, axis=0, keepdims=True)
+        self._bias -= lr*delta_bias
                 
 
         return error_terms

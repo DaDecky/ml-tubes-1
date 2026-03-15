@@ -63,7 +63,8 @@ class Sequential:
     
 
     def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], epochs: int=10, batch_size: int=1) -> None:
-        y = y.reshape(-1,1) # kudu reshape biar bentuknya sama kayak predictions
+        if y.ndim == 1:
+            y = y.reshape(-1,1) # kudu reshape biar bentuknya sama kayak predictions
         y_size = len(y)
         x_size = len(x)
 
@@ -79,6 +80,7 @@ class Sequential:
                 predictions = self.forward(x_batch)
                 loss = apply_loss_function(self._loss, y_batch, predictions)
                 self.backward(y_batch, predictions, batch_size)
+            print(f"epoch {epoch} loss {loss}")
             
     
 
