@@ -29,10 +29,10 @@ class Sequential:
     def compile(
         self,
         loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"],
-        learning_rate: float = 0.1,
+        lr: float = 0.1,
     ) -> None:
         self._loss = loss
-        self._learning_rate = learning_rate
+        self._learning_rate = lr
 
     def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         output = np.asarray(inputs, dtype=np.float64)
@@ -51,8 +51,8 @@ class Sequential:
         layer_size = len(self._layers)
         last_layer = self._layers[-1]
         error_terms = last_layer.backward(predictions=predictions,target=target, lr=lr, loss=self._loss, batch_size=batch_size)
-        for i in range(layer_size-2, 0, -1):
-            prev_layer_weights = 1
+        for i in range(layer_size-2, -1, -1):
+            prev_layer_weights = self._layers[i+1].weights
             error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, lr=lr, loss=self._loss, batch_size=batch_size) # TODO: ganti learning rate jangan di sini
 
 

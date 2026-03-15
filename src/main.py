@@ -6,10 +6,10 @@ from ffnn.models import Sequential
 
 def main() -> None:
     model = Sequential()
-    model.add(Dense(n_neuron=16, input_dim=5, activation="relu", seed=42))
-    model.add(Dense(n_neuron=8, activation="sigmoid", seed=42))
+    model.add(Dense(n_neuron=64, input_dim=5, activation="relu", seed=42))
+    model.add(Dense(n_neuron=32, activation="sigmoid", seed=42))
     model.add(Dense(n_neuron=1, activation="sigmoid", seed=42))
-    model.compile(loss="binary_crossentropy")
+    model.compile(loss="categorical_crossentropy", lr=1e-5)
 
     x_batch = np.array(
         [
@@ -24,7 +24,7 @@ def main() -> None:
     y = np.array([1,2,3,4])
 
 
-    model.fit(x_batch, y, epochs=3, batch_size=len(x_batch))
+    model.fit(x_batch, y, epochs=3, batch_size=1)
 
     x_test = np.array(
         [
