@@ -43,19 +43,17 @@ class Sequential:
     
 
     # ngupdate delta dan bobot
-    def backward(self, target: NDArray[np.float64], outputs: NDArray[np.float64]):
+    def backward(self, target: NDArray[np.float64], outputs: NDArray[np.float64], batch_size: int):
         lr = self._learning_rate
         predictions = np.asarray(outputs, dtype=np.float64)
 
 
         layer_size = len(self._layers)
-        print("layer_size:", layer_size)
         last_layer = self._layers[-1]
-        error_terms = last_layer.backward(predictions=predictions,target=target, lr=lr, loss=self._loss)
+        error_terms = last_layer.backward(predictions=predictions,target=target, lr=lr, loss=self._loss, batch_size=batch_size)
         for i in range(layer_size-2, 0, -1):
-            print("layer: ", i)
             prev_layer_weights = 1
-            error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, lr=lr, loss=self._loss) # TODO: ganti learning rate jangan di sini
+            error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, lr=lr, loss=self._loss, batch_size=batch_size) # TODO: ganti learning rate jangan di sini
 
 
 
@@ -66,11 +64,22 @@ class Sequential:
 
     def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], epochs: int=10, batch_size: int=1) -> None:
         y = y.reshape(-1,1) # kudu reshape biar bentuknya sama kayak predictions
-        for epoch in range(epochs):
-            predictions = self.forward(x)
-            loss = apply_loss_function(self._loss, y, predictions)
-            self.backward(y, predictions)
+        y_size = len(y)
+        x_size = len(x)
 
+        if x_size != y_size:
+            raise ValueError(f"JRows Features and Target Different in Size!")
+        
+        for epoch in range(epochs):
+            for i in range(0, x_size, batch_size):
+
+                x_batch = x[i : i + batch_size]
+                y_batch = y[i : i + batch_size]
+                
+                predictions = self.forward(x_batch)
+                loss = apply_loss_function(self._loss, y_batch, predictions)
+                self.backward(y_batch, predictions, batch_size)
+            
     
 
 
