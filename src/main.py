@@ -1,4 +1,6 @@
 import numpy as np
+import sys
+sys.path.append("src")
 
 from ffnn.layers import Dense
 from ffnn.models import Sequential
@@ -34,7 +36,7 @@ def main() -> None:
 
     y_val = np.array([5,6])
 
-    model.fit(
+    history = model.fit(
         x_train=x_train, 
         y_train=y_train, 
         x_val=x_val,
@@ -45,6 +47,10 @@ def main() -> None:
         verbose=1
     )
 
+    model.save("test_save_model.pkl") 
+    
+    load_model = Sequential.load("test_save_model.pkl")
+    
     x_test = np.array(
         [
             [1,1,1,1,1],
@@ -55,10 +61,10 @@ def main() -> None:
         dtype=np.float64,
     )
 
-    predictions = model.forward(x_test)
+    predictions = load_model.forward(x_test)
 
     print("Model summary:")
-    model.summary()
+    load_model.summary()
     print()
     print("Input batch shape:", x_test.shape)
     print("Prediction shape:", predictions.shape)
