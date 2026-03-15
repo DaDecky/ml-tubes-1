@@ -28,25 +28,20 @@ class Sequential:
 
     def compile(
         self,
-        loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"],
-        lr: float = 0.1,
+        loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"]
     ) -> None:
         self._loss = loss
-        self._learning_rate = lr
 
     def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         output = np.asarray(inputs, dtype=np.float64)
         for layer in self._layers:
             output = layer.forward(output)
-        return output
-    
-    
+        return output  
 
     # ngupdate delta dan bobot
     def backward(self, target: NDArray[np.float64], outputs: NDArray[np.float64], batch_size: int):
         lr = self._learning_rate
         predictions = np.asarray(outputs, dtype=np.float64)
-
 
         layer_size = len(self._layers)
         last_layer = self._layers[-1]
@@ -55,35 +50,69 @@ class Sequential:
             prev_layer_weights = self._layers[i+1].weights
             error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, lr=lr, loss=self._loss, batch_size=batch_size) # TODO: ganti learning rate jangan di sini
 
-
-
-
     def predict(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.forward(inputs)
-    
 
-    def fit(self, x: NDArray[np.float64], y: NDArray[np.float64], epochs: int=10, batch_size: int=1) -> None:
-        if y.ndim == 1:
-            y = y.reshape(-1,1) # kudu reshape biar bentuknya sama kayak predictions
-        y_size = len(y)
-        x_size = len(x)
-
+    # fit perlu ada dataset train sama validation biar nampilin loss per epochnya
+    def fit(
+        self,
+        x_train: NDArray[np.float64], 
+        y_train: NDArray[np.float64],
+        x_val: NDArray[np.float64]=None,
+        y_val: NDArray[np.float64]=None, 
+        epochs: int=10, 
+        batch_size: int=1,
+        learning_rate: float=0.1,
+        verbose: int=0
+    ) -> dict[str, list[float]]:
+        self._learning_rate = learning_rate
+        
+        if y_train.ndim == 1:
+            y_train = y_train.reshape(-1, 1) # kudu reshape biar bentuknya sama kayak predictions
+        if y_val is not None and y_val.ndim == 1:
+            y_val = y_val.reshape(-1, 1) # reshape juga buat validation
+        
+        y_size = len(y_train)
+        x_size = len(x_train)
+        
         if x_size != y_size:
-            raise ValueError(f"JRows Features and Target Different in Size!")
+            raise ValueError(f"Number of Features and Target Different in Size!")
+
+        history = {
+            "training_loss": [],
+            "validation_loss": []
+        }
         
         for epoch in range(epochs):
+            epoch_training_loss = 0.0
+            
             for i in range(0, x_size, batch_size):
 
-                x_batch = x[i : i + batch_size]
-                y_batch = y[i : i + batch_size]
+                x_batch = x_train[i : i + batch_size]
+                y_batch = y_train[i : i + batch_size]
+                current_batch_size = len(x_batch)
                 
                 predictions = self.forward(x_batch)
-                loss = apply_loss_function(self._loss, y_batch, predictions)
-                self.backward(y_batch, predictions, batch_size)
-            print(f"epoch {epoch} loss {loss}")
+                batch_loss = apply_loss_function(self._loss, y_batch, predictions)
+                epoch_training_loss += batch_loss * current_batch_size
+                
+                self.backward(y_batch, predictions, current_batch_size)
+                
+            average_training_loss = epoch_training_loss / x_size
+            history["training_loss"].append(average_training_loss)
             
-    
-
+            if x_val is not None and y_val is not None:
+                val_predictions = self.forward(x_val)
+                val_loss = apply_loss_function(self._loss, y_val, val_predictions)
+                history["validation_loss"].append(val_loss)
+                
+                if verbose == 1:
+                    print(f"epoch {epoch} loss {average_training_loss} val_loss {val_loss}")
+            else:
+                if verbose == 1:
+                    print(f"epoch {epoch} loss {average_training_loss}")
+                    
+        return history
 
     @property
     def layers(self) -> list[Dense]:

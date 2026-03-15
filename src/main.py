@@ -8,9 +8,10 @@ def main() -> None:
     model = Sequential()
     model.add(Dense(n_neuron=5, input_dim=5, activation="relu", seed=42))
     model.add(Dense(n_neuron=1, activation="linear", seed=42))
-    model.compile(loss="mse", lr=1e-5)
+    model.compile(loss="mse")
 
-    x_batch = np.array(
+    # data train
+    x_train = np.array(
         [
             [1,1,1,1,1],
             [2,2,2,2,2],
@@ -20,10 +21,29 @@ def main() -> None:
         dtype=np.float64,
     )
 
-    y = np.array([1,2,3,4])
+    y_train = np.array([1,2,3,4])
 
+    # data validation
+    x_val = np.array(
+        [
+            [5,5,5,5,5],
+            [6,6,6,6,6]
+        ],
+        dtype=np.float64,
+    )
 
-    model.fit(x_batch, y, epochs=1000, batch_size=1)
+    y_val = np.array([5,6])
+
+    model.fit(
+        x_train=x_train, 
+        y_train=y_train, 
+        x_val=x_val,
+        y_val=y_val,
+        epochs=500, 
+        batch_size=2, 
+        learning_rate=0.01,
+        verbose=1
+    )
 
     x_test = np.array(
         [
@@ -40,7 +60,7 @@ def main() -> None:
     print("Model summary:")
     model.summary()
     print()
-    print("Input batch shape:", x_batch.shape)
+    print("Input batch shape:", x_test.shape)
     print("Prediction shape:", predictions.shape)
     print("Predictions:")
     print(predictions)
