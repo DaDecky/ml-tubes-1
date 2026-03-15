@@ -3,7 +3,9 @@ from typing import Literal, Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from .activations import ActivationName, apply_activation
+from .losses import apply_loss_derivative
+
+from .activations import ActivationName, apply_activation, apply_activation_derivative
 
 WeightInitializer = Literal["zeros", "random_uniform", "random_normal"]
 
@@ -38,11 +40,22 @@ class Dense:
         self._last_linear_output: Optional[NDArray[np.float64]] = None
         self._last_output: Optional[NDArray[np.float64]] = None
 
+        self._error_terms: NDArray[np.float64] = None
+
         if input_dim is not None:
             self.build(input_dim)
 
     def is_first_layer(self) -> bool:
         return self._is_first_layer
+    
+    def last_output(self) -> NDArray[np.float64]:
+        return self._last_output
+    
+    def last_input(self) -> NDArray[np.float64]:
+        return self._last_input
+    
+    def weights(self) -> NDArray[np.float64]:
+        return self._weights
 
     def build(self, input_dim: int) -> None:
         self._input_dim = input_dim
@@ -66,6 +79,71 @@ class Dense:
         self._last_linear_output = batch_inputs @ self._weights + self._bias
         self._last_output = apply_activation(self._activation, self._last_linear_output)
         return self._last_output
+    
+    def _compute_output_error_terms(self, loss, target, predicted):
+        loss_derivative = apply_loss_derivative(loss, target, predicted)
+        activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
+        
+        
+        error_terms = np.sum(-activation_derivative.T @ loss_derivative,axis=1)
+
+        error_terms = np.tile(error_terms, (4,1))
+
+        return error_terms
+
+    def _compute_hidden_error_terms(self, prev_error_terms, prev_layer_weights):
+
+
+        loss_derivative = prev_error_terms
+
+        activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
+        print("Loss Derivative")
+        print(loss_derivative)
+
+        print("Activation Derivative")
+        print(activation_derivative.shape)
+
+        print("prev_layer_weights")
+        print(prev_layer_weights)
+        error_terms = np.sum(-activation_derivative.T @ np.dot(loss_derivative,prev_layer_weights), axis = 1)
+        error_terms = np.tile(error_terms, (4,1))
+        
+        print("error_terms")
+        print(error_terms)
+        
+        
+
+        return error_terms
+        
+
+    def backward(self, lr: int, loss,target: Optional[NDArray[np.float64]]=None, predictions=[], prev_layer_weights: Optional[NDArray[np.float64]] = [], prev_error_terms: Optional[NDArray[np.float64]] = []) -> NDArray[np.float64]:
+        # batch_inputs = np.asarray(prev_error_terms, dtype=np.float64)
+        # if batch_inputs.ndim == 1:
+        #     batch_inputs = batch_inputs.reshape(1, -1)
+
+        # if batch_inputs.shape[1] != self._input_dim:
+        #     raise ValueError(
+        #         f"Expected input with {self._input_dim} features, got {batch_inputs.shape[1]}"
+        #     )
+        
+        if target is not None: # output layer
+            error_terms = self._compute_output_error_terms(loss, target, predictions)
+            
+        else: # hidden layer
+            error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights)
+
+        # print("Error Terms")
+        # print(error_terms)
+
+        # print("Weights")
+        # print(self._weights)
+
+        # print("Last Input")
+        # print(self._last_input)
+
+        self._weights = self._weights -  self._last_input.T @ error_terms # kali lr  kita mau 8,3 (1,8)*(1,8)
+
+        return error_terms
 
     def output_dim(self) -> int:
         return self._n_neuron
