@@ -85,7 +85,7 @@ class Dense:
 
         # aktivasi softmax + categorical crossentropy
         if loss == "categorical_crossentropy" and self._activation == "softmax":
-            error_terms = predicted - target
+            error_terms = (predicted - target) / batch_size
 
         # aktivasi softmax + loss lain 
         elif self._activation == "softmax":
@@ -132,12 +132,12 @@ class Dense:
         else:
             error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights, batch_size)
 
-        self.dW = (self._last_input.T @ error_terms) / batch_size
+        self.dW = self._last_input.T @ error_terms
 
         if self._kernel_regularizer is not None:
             self.dW += self._kernel_regularizer.gradient(self._weights)
 
-        self.dB = np.sum(error_terms, axis=0, keepdims=True) / batch_size
+        self.dB = np.sum(error_terms, axis=0, keepdims=True)
 
         # update weights dan bias nanti di optimizer
 
