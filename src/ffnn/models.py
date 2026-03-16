@@ -1,6 +1,7 @@
 from typing import Literal
 
 import numpy as np
+import pickle
 from numpy.typing import NDArray
 from .losses import apply_loss_function
 
@@ -147,3 +148,15 @@ class Sequential:
                 f"Layer {i}: Dense(input_dim={layer.weights.shape[0]}, "
                 f"n_neuron={layer.output_dim()})"
             )
+
+    def save(self, file_path: str) -> None:
+        with open(file_path, "wb") as f:
+            pickle.dump(self, f)
+        print(f"Model telah disimpan ke {file_path}")
+    
+    @classmethod
+    def load(cls, file_path: str) -> "Sequential":
+        with open(file_path, "rb") as f:
+            model = pickle.load(f)
+        print(f"Model telah dimuat dari {file_path}")
+        return model
