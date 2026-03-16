@@ -30,6 +30,13 @@ class Sequential:
         self,
         loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"]
     ) -> None:
+        last_activation = self._layers[-1].activation
+
+        if last_activation == "softmax" and loss != "categorical_crossentropy":
+            raise SystemError("Warning: softmax biasanya dipakai dengan categorical_crossentropy")
+
+        if last_activation == "sigmoid" and loss == "categorical_crossentropy":
+            raise SystemError("Warning: sigmoid tidak cocok untuk multiclass classification")
         self._loss = loss
 
     def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:

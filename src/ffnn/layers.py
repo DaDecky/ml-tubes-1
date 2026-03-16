@@ -82,9 +82,28 @@ class Dense:
         return self._last_output
     
     def _compute_output_error_terms(self, loss, target, predicted, batch_size):
-        loss_derivative = apply_loss_derivative(loss, target, predicted)
-        activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
-        error_terms = loss_derivative * activation_derivative
+
+        # aktivasi softmax + categorical crossentropy
+        if loss == "categorical_crossentropy" and self._activation == "softmax":
+            error_terms = predicted - target
+
+        # aktivasi softmax + loss lain 
+        elif self._activation == "softmax":
+            loss_derivative = apply_loss_derivative(loss, target, predicted)
+
+            s = predicted
+            g = loss_derivative
+
+            dot = np.sum(g * s, axis=1, keepdims=True)
+            error_terms = s * (g - dot)
+
+        # aktivasi biasa
+        else:
+            loss_derivative = apply_loss_derivative(loss, target, predicted)
+            activation_derivative = apply_activation_derivative(
+                self._activation, self._last_linear_output
+            )
+            error_terms = loss_derivative * activation_derivative
 
         return error_terms
 
@@ -135,6 +154,10 @@ class Dense:
     @property
     def kernel_regularizer(self):
         return self._kernel_regularizer
+    
+    @property
+    def activation(self):
+        return self._activation
 
     def _initialize_weights(self, input_dim: int) -> NDArray[np.float64]:
         shape = (input_dim, self._n_neuron)
