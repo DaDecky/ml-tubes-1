@@ -30,10 +30,10 @@ class Sequential:
     def compile(
         self,
         loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"],
-        optimizer = SGD(0.001)
+        optimizer = None
     ) -> None:
         self._loss = loss
-        self._optimizer = optimizer
+        self._optimizer = optimizer if optimizer is not None else SGD(0.001)
 
     def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         output = np.asarray(inputs, dtype=np.float64)
@@ -65,10 +65,13 @@ class Sequential:
         y_val: NDArray[np.float64]=None, 
         epochs: int=10, 
         batch_size: int=1,
-        learning_rate: float=0.1,
+        learning_rate: float=0.001,
         verbose: int=0
     ) -> dict[str, list[float]]:
         self._learning_rate = learning_rate
+        
+        if self._optimizer is not None:
+            self._optimizer.lr = learning_rate
         
         if y_train.ndim == 1:
             y_train = y_train.reshape(-1, 1) # kudu reshape biar bentuknya sama kayak predictions
