@@ -4,14 +4,14 @@ import numpy as np
 import pickle
 from numpy.typing import NDArray
 from .losses import apply_loss_function
-
+from .optimizers import SGD
 from .layers import Dense
 
 
 class Sequential:
     def __init__(self) -> None:
         self._layers: list[Dense] = []
-        self._learning_rate: float = 0.1
+        self._optimizer = None
 
     def add(self, layer: Dense) -> None:
         # Throw errors if invalids layer is added
@@ -29,16 +29,11 @@ class Sequential:
 
     def compile(
         self,
-        loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"]
+        loss: Literal["mse", "binary_crossentropy", "categorical_crossentropy"],
+        optimizer = SGD(0.001)
     ) -> None:
-        last_activation = self._layers[-1].activation
-
-        if last_activation == "softmax" and loss != "categorical_crossentropy":
-            raise SystemError("Warning: softmax biasanya dipakai dengan categorical_crossentropy")
-
-        if last_activation == "sigmoid" and loss == "categorical_crossentropy":
-            raise SystemError("Warning: sigmoid tidak cocok untuk multiclass classification")
         self._loss = loss
+        self._optimizer = optimizer
 
     def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         output = np.asarray(inputs, dtype=np.float64)
@@ -48,15 +43,15 @@ class Sequential:
 
     # ngupdate delta dan bobot
     def backward(self, target: NDArray[np.float64], outputs: NDArray[np.float64], batch_size: int):
-        lr = self._learning_rate
-        predictions = np.asarray(outputs, dtype=np.float64)
 
         layer_size = len(self._layers)
         last_layer = self._layers[-1]
-        error_terms = last_layer.backward(predictions=predictions,target=target, lr=lr, loss=self._loss, batch_size=batch_size)
+        error_terms = last_layer.backward(predictions=outputs,target=target, loss=self._loss, batch_size=batch_size)
         for i in range(layer_size-2, -1, -1):
             prev_layer_weights = self._layers[i+1].weights
-            error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, lr=lr, loss=self._loss, batch_size=batch_size) # TODO: ganti learning rate jangan di sini
+            error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, loss=self._loss, batch_size=batch_size) 
+        for layer in self._layers:
+            self._optimizer.update(layer, layer.dW, layer.dB)
 
     def predict(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.forward(inputs)

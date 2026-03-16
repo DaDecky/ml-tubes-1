@@ -1,5 +1,7 @@
 import numpy as np
 import sys
+
+from ffnn.optimizers import Adam
 sys.path.append("src")
 
 from ffnn.layers import Dense
@@ -10,7 +12,7 @@ def main() -> None:
     model = Sequential()
     model.add(Dense(n_neuron=5, input_dim=5, activation="relu", seed=42))
     model.add(Dense(n_neuron=1, activation="linear", seed=42))
-    model.compile(loss="mse")
+    model.compile(loss="mse", optimizer=Adam(0.001))
 
     # data train
     x_train = np.array(

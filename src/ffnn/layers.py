@@ -42,7 +42,7 @@ class Dense:
         self._last_linear_output: Optional[NDArray[np.float64]] = None
         self._last_output: Optional[NDArray[np.float64]] = None
         self.dW: Optional[NDArray[np.float64]] = None
-        self.db: Optional[NDArray[np.float64]] = None
+        self.dB: Optional[NDArray[np.float64]] = None
 
         self._error_terms: NDArray[np.float64] = None
 
@@ -117,22 +117,29 @@ class Dense:
         return error_terms
         
 
-    def backward(self, lr: float, loss, target: Optional[NDArray[np.float64]]=None, predictions=[], prev_layer_weights: Optional[NDArray[np.float64]] = [], prev_error_terms: Optional[NDArray[np.float64]] = [], batch_size: int=1) -> NDArray[np.float64]:
-        
-        if target is not None: # output layer
+    def backward(
+        self,
+        loss,
+        target: Optional[NDArray[np.float64]] = None,
+        predictions: Optional[NDArray[np.float64]] = None,
+        prev_layer_weights: Optional[NDArray[np.float64]] = None,
+        prev_error_terms: Optional[NDArray[np.float64]] = None,
+        batch_size: int = 1
+    ) -> NDArray[np.float64]:
+
+        if target is not None:
             error_terms = self._compute_output_error_terms(loss, target, predictions, batch_size)
-            
-        else: # hidden layer
+        else:
             error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights, batch_size)
 
         self.dW = (self._last_input.T @ error_terms) / batch_size
+
         if self._kernel_regularizer is not None:
             self.dW += self._kernel_regularizer.gradient(self._weights)
 
-        self.db = np.sum(error_terms, axis=0, keepdims=True) / batch_size
-        
-        self._weights -= lr*self.dW
-        self._bias -= lr*self.db
+        self.dB = np.sum(error_terms, axis=0, keepdims=True) / batch_size
+
+        # update weights dan bias nanti di optimizer
 
         return error_terms
 
