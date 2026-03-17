@@ -84,3 +84,67 @@ def apply_activation_derivative(
     if name == "softmax":
         return softmax_derivative(x)
     raise ValueError(f"Unsupported activation: {name}")
+
+class Activation:
+    def __init__(self, name, input_dim: int | None = None):
+        self._name = name
+        self._input_dim = input_dim
+        self._is_first_layer = input_dim is not None
+        self._last_input: NDArray[np.float64] | None = None
+        self._last_output: NDArray[np.float64] | None = None
+        if input_dim is not None:
+            self.build(input_dim)
+
+    def is_first_layer(self) -> bool:
+        return self._is_first_layer
+
+    def build(self, input_dim: int) -> None:
+        self._input_dim = input_dim
+
+    def forward(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
+        batch_inputs = np.asarray(inputs, dtype=np.float64)
+        if batch_inputs.ndim == 1:
+            batch_inputs = batch_inputs.reshape(1, -1)
+
+        if self._input_dim is not None and batch_inputs.shape[1] != self._input_dim:
+            raise ValueError(
+                f"Expected input with {self._input_dim} features, got {batch_inputs.shape[1]}"
+            )
+
+        self._last_input = batch_inputs
+        self._last_output = apply_activation(self._name, batch_inputs)
+        return self._last_output
+
+    def backward(
+        self,
+        loss,
+        target=None,
+        predictions=None,
+        prev_layer_weights=None,
+        prev_error_terms: NDArray[np.float64] | None = None,
+        batch_size: int = 1,
+    ) -> NDArray[np.float64]:
+        if prev_error_terms is None:
+            raise ValueError("prev_error_terms is required for Activation backward.")
+        if self._last_input is None:
+            raise ValueError("No cached forward pass found.")
+
+        deriv = apply_activation_derivative(self._name, self._last_input)
+        if deriv.ndim == 3:
+            return np.einsum("nij,nj->ni", deriv, prev_error_terms)
+        return prev_error_terms * deriv
+
+    def output_dim(self) -> int:
+        if self._input_dim is None:
+            raise ValueError("Layer is not built.")
+        return self._input_dim
+
+    @property
+    def input_dim(self) -> int:
+        if self._input_dim is None:
+            raise ValueError("Layer is not built.")
+        return self._input_dim
+
+    @property
+    def name(self):
+        return self._name

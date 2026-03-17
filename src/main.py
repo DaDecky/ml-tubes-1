@@ -1,20 +1,23 @@
-import numpy as np
 import sys
+import numpy as np
 
-from ffnn.optimizers import Adam
 sys.path.append("src")
 
+from ffnn.activations import Activation
 from ffnn.layers import Dense
 from ffnn.models import Sequential
+from ffnn.normalizers import RMSNormalization
+from ffnn.optimizers import Adam
 
 
 def main() -> None:
     model = Sequential()
-    model.add(Dense(n_neuron=5, input_dim=5, activation="relu", seed=42))
-    model.add(Dense(n_neuron=1, activation="linear", seed=42))
+    model.add(Dense(5, input_dim=5))
+    model.add(RMSNormalization())
+    model.add(Activation('relu'))
+    model.add(Dense(1, activation='linear'))
     model.compile(loss="mse", optimizer=Adam(0.001))
 
-    # data train
     x_train = np.array(
         [
             [1,1,1,1,1],
@@ -27,7 +30,6 @@ def main() -> None:
 
     y_train = np.array([1,2,3,4])
 
-    # data validation
     x_val = np.array(
         [
             [5,5,5,5,5],

@@ -14,7 +14,7 @@ class Dense:
     def __init__(
         self,
         n_neuron: int,
-        activation: ActivationName,
+        activation: ActivationName="linear",
         kernel_regularizer = None,
         input_dim: Optional[int] = None,
         weight_initializer: WeightInitializer = "random_normal",
@@ -112,7 +112,10 @@ class Dense:
         prev_loss_derivative = prev_error_terms
         activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
 
-        error_terms = (prev_loss_derivative @ prev_layer_weights.T) * activation_derivative
+        if prev_layer_weights is None:
+            error_terms = prev_loss_derivative * activation_derivative
+        else:
+            error_terms = (prev_loss_derivative @ prev_layer_weights.T) * activation_derivative
 
         return error_terms
         

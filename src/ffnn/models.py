@@ -3,6 +3,9 @@ from typing import Literal
 import numpy as np
 import pickle
 from numpy.typing import NDArray
+
+from .activations import Activation
+from .normalizers import RMSNormalization
 from .losses import apply_loss_function
 from .optimizers import SGD
 from .layers import Dense
@@ -48,10 +51,16 @@ class Sequential:
         last_layer = self._layers[-1]
         error_terms = last_layer.backward(predictions=outputs,target=target, loss=self._loss, batch_size=batch_size)
         for i in range(layer_size-2, -1, -1):
-            prev_layer_weights = self._layers[i+1].weights
+            next_layer = self._layers[i+1]
+            prev_layer_weights = next_layer.weights if hasattr(next_layer, "weights") else None
             error_terms = self._layers[i].backward(prev_error_terms=error_terms, prev_layer_weights=prev_layer_weights, loss=self._loss, batch_size=batch_size) 
         for layer in self._layers:
-            self._optimizer.update(layer, layer.dW, layer.dB)
+            if isinstance(layer, RMSNormalization):
+                self._optimizer.update_gamma(layer, layer.dG)
+            elif (isinstance(layer, Activation)):
+                pass
+            else:
+                self._optimizer.update(layer, layer.dW, layer.dB)
 
     def predict(self, inputs: NDArray[np.float64]) -> NDArray[np.float64]:
         return self.forward(inputs)
@@ -109,8 +118,9 @@ class Sequential:
 
             reg_loss = 0
             for layer in self._layers:
-                if layer.kernel_regularizer is not None:
-                    reg_loss += layer.kernel_regularizer(layer.weights)
+                if isinstance(layer, Dense):
+                    if layer.kernel_regularizer is not None:
+                        reg_loss += layer.kernel_regularizer(layer.weights)
             
             total_loss = data_loss + reg_loss
                 
@@ -122,8 +132,9 @@ class Sequential:
                 
                 reg_loss = 0
                 for layer in self._layers:
-                    if layer.kernel_regularizer is not None:
-                        reg_loss += layer.kernel_regularizer(layer.weights)
+                    if isinstance(layer, Dense):
+                        if layer.kernel_regularizer is not None:
+                            reg_loss += layer.kernel_regularizer(layer.weights)
 
                 val_loss += reg_loss
                 history["validation_loss"].append(val_loss)
@@ -142,10 +153,21 @@ class Sequential:
 
     def summary(self) -> None:
         for i, layer in enumerate(self._layers):
-            print(
-                f"Layer {i}: Dense(input_dim={layer.weights.shape[0]}, "
-                f"n_neuron={layer.output_dim()})"
-            )
+            if isinstance(layer, Dense):
+                print(
+                    f"Layer {i}: Dense(input_dim={layer.weights.shape[0]}, "
+                    f"n_neuron={layer.output_dim()})"
+                )
+            elif isinstance(layer, RMSNormalization):
+                print(
+                    f"Layer {i}: RMSNormalization(input_dim={layer.input_dim})"
+                )
+            elif isinstance(layer, Activation):
+                print(
+                    f"Layer {i}: Activation(name={layer.name}, input_dim={layer.input_dim})"
+                )
+            else:
+                print(f"Layer {i}: {layer.__class__.__name__}")
 
     def save(self, file_path: str) -> None:
         with open(file_path, "wb") as f:

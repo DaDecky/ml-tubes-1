@@ -2,7 +2,9 @@ import numpy as np
 
 
 class Optimizer:
-    def update(self, layer, dW, dB):
+    def update(self, layer, dW, dB, dG):
+        raise NotImplementedError
+    def update_gamma(self, layer, dG):
         raise NotImplementedError
 
 
@@ -14,6 +16,8 @@ class SGD(Optimizer):
         layer._weights -= self.lr * dW
         layer._bias -= self.lr * dB
 
+    def update_gamma(self, layer, dG):
+        layer._gammas -= self.lr * dG
 
 class Adam(Optimizer):
     def __init__(self, lr=0.001, beta1=0.9, beta2=0.999, epsilon=1e-8):
@@ -26,6 +30,8 @@ class Adam(Optimizer):
         self.v_w = {}
         self.m_b = {}
         self.v_b = {}
+        self.m_g = {}
+        self.v_g = {}
 
     def update(self, layer, dW, dB):
         key = id(layer)
@@ -54,3 +60,22 @@ class Adam(Optimizer):
 
         layer._weights -= self.lr * m_w_hat / (np.sqrt(v_w_hat) + self.epsilon)
         layer._bias -= self.lr * m_b_hat / (np.sqrt(v_b_hat) + self.epsilon)
+
+    def update_gamma(self, layer, dG):
+        key = id(layer)
+
+        if key not in self.m_g:
+            self.t[key] = 0
+            self.m_g[key] = np.zeros_like(dG)
+            self.v_g[key] = np.zeros_like(dG)
+        
+        self.t[key] += 1
+        t_current = self.t[key]
+
+        self.m_g[key] = self.beta1 * self.m_g[key] + (1 - self.beta1) * dG
+        self.v_g[key] = self.beta2 * self.v_g[key] + (1 - self.beta2) * (dG ** 2)
+
+        m_g_hat = self.m_g[key] / (1 - self.beta1 ** t_current)
+        v_g_hat = self.v_g[key] / (1 - self.beta2 ** t_current)
+
+        layer._gammas -= self.lr * m_g_hat / (np.sqrt(v_g_hat) + self.epsilon)
