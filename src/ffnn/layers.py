@@ -7,7 +7,13 @@ from .losses import apply_loss_derivative
 
 from .activations import ActivationName, apply_activation, apply_activation_derivative
 
-WeightInitializer = Literal["zeros", "random_uniform", "random_normal"]
+WeightInitializer = Literal[
+    "zeros",
+    "random_uniform",
+    "random_normal",
+    "xavier",
+    "he",
+]
 
 
 class Dense:
@@ -51,10 +57,10 @@ class Dense:
 
     def is_first_layer(self) -> bool:
         return self._is_first_layer
-    
+
     def last_output(self) -> NDArray[np.float64]:
         return self._last_output
-    
+
     def last_input(self) -> NDArray[np.float64]:
         return self._last_input
 
@@ -80,14 +86,13 @@ class Dense:
         self._last_linear_output = batch_inputs @ self._weights + self._bias
         self._last_output = apply_activation(self._activation, self._last_linear_output)
         return self._last_output
-    
-    def _compute_output_error_terms(self, loss, target, predicted, batch_size):
 
+    def _compute_output_error_terms(self, loss, target, predicted, batch_size):
         # aktivasi softmax + categorical crossentropy
         if loss == "categorical_crossentropy" and self._activation == "softmax":
             error_terms = (predicted - target) / batch_size
 
-        # aktivasi softmax + loss lain 
+        # aktivasi softmax + loss lain
         elif self._activation == "softmax":
             loss_derivative = apply_loss_derivative(loss, target, predicted)
 
@@ -107,10 +112,13 @@ class Dense:
 
         return error_terms
 
-    def _compute_hidden_error_terms(self, prev_error_terms, prev_layer_weights, batch_size):
-
+    def _compute_hidden_error_terms(
+        self, prev_error_terms, prev_layer_weights, batch_size
+    ):
         prev_loss_derivative = prev_error_terms
-        activation_derivative = apply_activation_derivative(self._activation, self._last_linear_output)
+        activation_derivative = apply_activation_derivative(
+            self._activation, self._last_linear_output
+        )
 
         if prev_layer_weights is None:
             error_terms = prev_loss_derivative * activation_derivative
@@ -118,7 +126,6 @@ class Dense:
             error_terms = (prev_loss_derivative @ prev_layer_weights.T) * activation_derivative
 
         return error_terms
-        
 
     def backward(
         self,
@@ -127,13 +134,16 @@ class Dense:
         predictions: Optional[NDArray[np.float64]] = None,
         prev_layer_weights: Optional[NDArray[np.float64]] = None,
         prev_error_terms: Optional[NDArray[np.float64]] = None,
-        batch_size: int = 1
+        batch_size: int = 1,
     ) -> NDArray[np.float64]:
-
         if target is not None:
-            error_terms = self._compute_output_error_terms(loss, target, predictions, batch_size)
+            error_terms = self._compute_output_error_terms(
+                loss, target, predictions, batch_size
+            )
         else:
-            error_terms = self._compute_hidden_error_terms(prev_error_terms, prev_layer_weights, batch_size)
+            error_terms = self._compute_hidden_error_terms(
+                prev_error_terms, prev_layer_weights, batch_size
+            )
 
         self.dW = self._last_input.T @ error_terms
 
@@ -160,23 +170,31 @@ class Dense:
         if self._bias is None:
             raise ValueError("Layer bias is not initialized.")
         return self._bias
-    
+
     @property
     def kernel_regularizer(self):
         return self._kernel_regularizer
-    
+
     @property
     def activation(self):
         return self._activation
 
     def _initialize_weights(self, input_dim: int) -> NDArray[np.float64]:
         shape = (input_dim, self._n_neuron)
-        return self._initialize_array(shape)
+        return self._initialize_array(shape, fan_in=input_dim, fan_out=self._n_neuron)
 
     def _initialize_bias(self) -> NDArray[np.float64]:
-        return self._initialize_array((1, self._n_neuron))
+        fan_in = self._input_dim if self._input_dim is not None else 1
+        return self._initialize_array(
+            (1, self._n_neuron), fan_in=fan_in, fan_out=self._n_neuron
+        )
 
-    def _initialize_array(self, shape: tuple[int, ...]) -> NDArray[np.float64]:
+    def _initialize_array(
+        self,
+        shape: tuple[int, ...],
+        fan_in: int,
+        fan_out: int,
+    ) -> NDArray[np.float64]:
         if self._weight_initializer == "zeros":
             return np.zeros(shape, dtype=np.float64)
 
@@ -188,5 +206,13 @@ class Dense:
         if self._weight_initializer == "random_normal":
             std = np.sqrt(self._variance)
             return self._rng.normal(self._mean, std, size=shape).astype(np.float64)
+
+        if self._weight_initializer == "xavier":
+            limit = np.sqrt(6.0 / (fan_in + fan_out))
+            return self._rng.uniform(-limit, limit, size=shape).astype(np.float64)
+
+        if self._weight_initializer == "he":
+            std = np.sqrt(2.0 / fan_in)
+            return self._rng.normal(0.0, std, size=shape).astype(np.float64)
 
         raise ValueError(f"Unsupported weight initializer: {self._weight_initializer}")

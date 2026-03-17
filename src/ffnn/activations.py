@@ -2,7 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Literal
 
-ActivationName = Literal["linear", "relu", "sigmoid", "tanh", "softmax"]
+ActivationName = Literal["linear", "relu", "sigmoid", "tanh", "softmax", "swish", "leaky_relu"]
 
 
 def linear(x: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -54,6 +54,19 @@ def softmax_derivative(x: NDArray[np.float64]) -> NDArray[np.float64]:
     
     jacobian = diag_s - outer_s
     return jacobian
+
+def swish(x: NDArray[np.float64]) -> NDArray[np.float64]:
+    return x * sigmoid(x)
+
+def swish_derivative(x: NDArray[np.float64]) -> NDArray[np.float64]:
+    s = sigmoid(x)
+    return s + x * s * (1 - s)
+
+def leaky_relu(x: NDArray[np.float64], alpha: float = 0.01) -> NDArray[np.float64]:
+    return np.where(x > 0, x, alpha * x)
+
+def leaky_relu_derivative(x: NDArray[np.float64], alpha: float = 0.01) -> NDArray[np.float64]:
+    return np.where(x > 0, 1.0, alpha)
         
 def apply_activation(
     name: ActivationName, x: NDArray[np.float64]
@@ -68,6 +81,10 @@ def apply_activation(
         return tanh(x)
     if name == "softmax":
         return softmax(x)
+    if name == "swish":
+        return swish(x)
+    if name == "leaky_relu":
+        return leaky_relu(x)
     raise ValueError(f"Unsupported activation: {name}")
 
 def apply_activation_derivative(
@@ -83,6 +100,10 @@ def apply_activation_derivative(
         return tanh_derivative(x)
     if name == "softmax":
         return softmax_derivative(x)
+    if name == "swish":
+        return swish_derivative(x)
+    if name == "leaky_relu":
+        return leaky_relu_derivative(x)
     raise ValueError(f"Unsupported activation: {name}")
 
 class Activation:
